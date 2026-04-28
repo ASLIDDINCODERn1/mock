@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mock Exam Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <section id="authScreen" class="auth-screen">
+    <div class="auth-visual" aria-hidden="true">
+      <div class="paper-stack">
+        <div class="paper paper-front">
+          <span class="paper-kicker">Mock exam</span>
+          <strong>Grammar</strong>
+          <div class="paper-line long"></div>
+          <div class="paper-line"></div>
+          <div class="answer-row"></div>
+          <div class="answer-row short"></div>
+        </div>
+        <div class="paper paper-back"></div>
+        <div class="score-tile">
+          <span>Ready</span>
+          <strong>4 sections</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-panel">
+      <div class="brand-row">
+        <div class="brand-mark">ME</div>
+        <div>
+          <span class="eyebrow">Firebase protected</span>
+          <h1>Mock Exam Portal</h1>
+        </div>
+      </div>
+
+      <p class="auth-copy">
+        Sign in with your Firebase account, or try the demo to explore all sections without logging in.
+      </p>
+
+      <div id="configNotice" class="notice" hidden></div>
+
+      <form id="loginForm" class="login-form">
+        <label>
+          Email
+          <input id="emailInput" type="email" autocomplete="email" placeholder="student@example.com" required />
+        </label>
+        <label>
+          Password
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Your password" required />
+        </label>
+
+        <button id="loginButton" class="primary-button" type="submit">
+          Log in
+        </button>
+        <p id="authError" class="form-error" role="alert"></p>
+      </form>
+
+      <div class="auth-divider"><span>or</span></div>
+      <button id="demoButton" class="ghost-button demo-button" type="button">
+        Try demo — no login needed
+      </button>
+    </div>
+  </section>
+
+  <div id="appShell" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">ME</div>
+        <div>
+          <strong>Mock Exam</strong>
+          <span>Student panel</span>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Exam sections">
+        <button class="nav-item active" data-view="dashboard">
+          <span>D</span>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="grammar">
+          <span>G</span>
+          Grammar
+        </button>
+        <button class="nav-item" data-view="reading">
+          <span>R</span>
+          Reading
+        </button>
+        <button class="nav-item" data-view="writing">
+          <span>W</span>
+          Writing
+        </button>
+        <button class="nav-item" data-view="speaking">
+          <span>S</span>
+          Speaking
+        </button>
+      </nav>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobileMenuButton" class="icon-button mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div>
+            <span id="pageEyebrow" class="eyebrow">Mock exam</span>
+            <h2 id="pageTitle">Dashboard</h2>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button id="themeToggleBtn" class="icon-button theme-icon-btn" type="button" aria-label="Toggle theme">
+            <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+          <button id="profileButton" class="profile-button" type="button" aria-label="Open profile drawer" aria-controls="profileDrawer" aria-expanded="false">
+            <span id="userInitials">U</span>
+          </button>
+        </div>
+      </header>
+
+      <section id="dashboardView" class="view active">
+        <div class="dashboard-grid">
+          <article class="summary-panel">
+            <span class="eyebrow">Today</span>
+            <h3>Choose a section and start the exam flow for your program.</h3>
+            <div class="summary-stats">
+              <div>
+                <strong>4</strong>
+                <span>Sections</span>
+              </div>
+              <div>
+                <strong>1</strong>
+                <span>Ready test</span>
+              </div>
+              <div>
+                <strong>AI</strong>
+                <span>Writing + speaking</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="status-panel">
+            <span class="eyebrow">Exam status</span>
+            <div id="scoreList"></div>
+          </article>
+        </div>
+
+        <div class="section-cards">
+          <button class="section-card" data-view="grammar">
+            <span class="section-code">G</span>
+            <strong>Grammar</strong>
+            <small>Multiple choice and correction test</small>
+          </button>
+          <button class="section-card" data-view="reading">
+            <span class="section-code">R</span>
+            <strong>Reading</strong>
+            <small>Prepared passage with answer key</small>
+          </button>
+          <button class="section-card" data-view="writing">
+            <span class="section-code">W</span>
+            <strong>Writing</strong>
+            <small>Admin topic with AI evaluation</small>
+          </button>
+          <button class="section-card" data-view="speaking">
+            <span class="section-code">S</span>
+            <strong>Speaking</strong>
+            <small>Admin prompt, mic capture, AI evaluation</small>
+          </button>
+        </div>
+      </section>
+
+      <section id="grammarView" class="view">
+        <div class="tool-header">
+          <div>
+            <span class="eyebrow">Section 1</span>
+            <h3>Grammar Test</h3>
+          </div>
+          <div class="timer-pill">15:00</div>
+        </div>
+
+        <div id="grammarQuestions" class="question-stack"></div>
+
+        <div class="action-row">
+          <button id="resetGrammarButton" class="ghost-button" type="button">Reset answers</button>
+          <button id="submitGrammarButton" class="primary-button" type="button">Submit grammar</button>
+        </div>
+
+        <div id="grammarResult" class="result-panel" hidden></div>
+      </section>
+
+      <section id="readingView" class="view">
+        <div class="split-layout">
+          <article class="reading-passage">
+            <div class="tool-header compact">
+              <div>
+                <span class="eyebrow">Section 2</span>
+                <h3 id="readingTitle">Reading Passage</h3>
+              </div>
+              <div class="timer-pill">20:00</div>
+            </div>
+            <div id="readingPassage" class="passage-copy"></div>
+          </article>
+
+          <article class="answer-panel">
+            <h3>Questions</h3>
+            <div id="readingQuestions" class="question-stack compact"></div>
+            <div class="action-row">
+              <button id="resetReadingButton" class="ghost-button" type="button">Reset</button>
+              <button id="submitReadingButton" class="primary-button" type="button">Submit reading</button>
+            </div>
+          </article>
+        </div>
+
+        <div id="readingResult" class="result-panel" hidden></div>
+      </section>
+
+      <section id="writingView" class="view">
+        <div class="split-layout writing-layout">
+          <article class="prompt-panel">
+            <span class="eyebrow">Section 3</span>
+            <h3 id="writingTaskTitle">Writing Task</h3>
+            <p id="writingPrompt" class="prompt-copy"></p>
+            <div class="meta-grid">
+              <div>
+                <span>Target</span>
+                <strong>100+ words</strong>
+              </div>
+              <div>
+                <span>Type</span>
+                <strong>Essay</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="writing-editor">
+            <div class="editor-top">
+              <h3>Your response</h3>
+              <span id="wordCounter">0 words</span>
+            </div>
+            <textarea id="writingText" placeholder="Write your answer here..."></textarea>
+            <div class="action-row">
+              <button id="clearWritingButton" class="ghost-button" type="button">Clear</button>
+              <button id="submitWritingButton" class="primary-button" type="button">Evaluate writing</button>
+            </div>
+          </article>
+        </div>
+
+        <div id="writingResult" class="result-panel" hidden></div>
+      </section>
+
+      <section id="speakingView" class="view">
+        <div class="split-layout speaking-layout">
+          <article class="prompt-panel">
+            <span class="eyebrow">Section 4</span>
+            <h3 id="speakingPromptTitle">Speaking Prompt</h3>
+            <p id="speakingPrompt" class="prompt-copy"></p>
+            <div id="speakingPoints" class="point-list"></div>
+          </article>
+
+          <article class="recorder-panel">
+            <div class="recorder-ring">
+              <span id="recordingTime">0:00</span>
+            </div>
+            <div class="recorder-controls">
+              <button id="recordButton" class="ghost-button" type="button">Start recording</button>
+              <button id="resetSpeakingButton" class="ghost-button" type="button">Clear answer</button>
+              <button id="submitSpeakingButton" class="primary-button" type="button">Evaluate speaking</button>
+            </div>
+            <p id="speakingStatus" class="speaking-status">Press record and speak, or type your answer below.</p>
+            <textarea id="speakingTranscript" placeholder="Your speaking transcript will appear here, or you can type your answer manually..."></textarea>
+          </article>
+        </div>
+
+        <div id="speakingResult" class="result-panel" hidden></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="examLockedScreen" class="exam-locked-screen" hidden>
+    <div class="locked-card">
+      <div class="brand-mark" style="width:56px;height:56px;font-size:18px;margin:0 auto 20px;">ME</div>
+      <h2>Exam is Locked</h2>
+      <p>The administrator has paused the exam. Please wait until it is reopened.</p>
+      <button id="lockedSignOutButton" class="ghost-button" type="button">Sign out</button>
+    </div>
+  </div>
+  <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <aside id="profileDrawer" class="profile-drawer" aria-hidden="true" hidden>
+    <div class="drawer-top">
+      <div class="profile-avatar" id="drawerInitials">U</div>
+      <div>
+        <span class="eyebrow">Profile</span>
+        <h3>Account settings</h3>
+      </div>
+      <button id="closeDrawerButton" class="icon-button" type="button" aria-label="Close profile drawer">x</button>
+    </div>
+
+    <div class="profile-meta">
+      <span>Email</span>
+      <strong id="drawerEmail">student@example.com</strong>
+    </div>
+    <div class="profile-meta">
+      <span>Session</span>
+      <strong id="sessionStatus">Active on this device</strong>
+    </div>
+
+    <button id="signOutButton" class="drawer-action danger" type="button">
+      <span>Account</span>
+      <strong>Sign out</strong>
+    </button>
+  </aside>
+
+  <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
