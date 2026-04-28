@@ -44,6 +44,11 @@ const state = {
   recording: false,
   recordStartedAt: null,
   recordInterval: null,
+  antiCheat: {
+    screenshotAttempts: 0,
+    lastVisibilityFlagAt: 0,
+    leaderboardAlertSent: false
+  },
   speechRecognition: null,
   speakingTranscriptFinal: "",
   writing: {
@@ -76,6 +81,7 @@ async function init() {
   bindAuthForm();
   bindProfileDrawer();
   bindExamActions();
+  bindAntiCheat();
   renderAll();
   await setupFirebaseAuth();
   $("#demoButton").addEventListener("click", enterGuestMode);
@@ -179,6 +185,28 @@ function bindExamActions() {
   initSpeechRecognition();
 }
 
+function bindAntiCheat() {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "PrintScreen") {
+      void registerScreenshotAttempt("printscreen");
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden || !isExamViewActive()) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - state.antiCheat.lastVisibilityFlagAt < 4000) {
+      return;
+    }
+
+    state.antiCheat.lastVisibilityFlagAt = now;
+    void registerScreenshotAttempt("visibility_hidden");
+  });
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyBSg3-LBL4bQb9ilbL271Zo8Y3lRDKXg2w",
   authDomain: "shop-c1c78.firebaseapp.com",
@@ -244,6 +272,8 @@ function enterAuth() {
 
 async function enterApp(user) {
   state.currentUser = user;
+  state.antiCheat.screenshotAttempts = 0;
+  state.antiCheat.leaderboardAlertSent = false;
   $("#authScreen").hidden = true;
   $("#appShell").hidden = false;
   $("#userInitials").textContent = initials(user.email || "User");
@@ -411,9 +441,70 @@ async function saveUserResult(section, score, answers) {
   }
 }
 
+function isExamViewActive() {
+  return ["grammar", "reading", "writing", "speaking"].some((section) =>
+    $(`#${section}View`)?.classList.contains("active")
+  );
+}
+
+async function registerScreenshotAttempt(source) {
+  if (!isExamViewActive()) {
+    return;
+  }
+
+  state.antiCheat.screenshotAttempts += 1;
+  const attempt = state.antiCheat.screenshotAttempts;
+
+  if (attempt >= 3) {
+    showAntiCheatOverlay();
+  }
+
+  toast(`Screenshot attempt detected (${attempt}/3).`, "error");
+  await saveAntiCheatEvent(source, attempt);
+}
+
+async function saveAntiCheatEvent(source, attempt) {
+  if (!state.database || !state.currentUser) return;
+
+  const uid = state.currentUser.uid;
+  const updates = {
+    [`userResults/${uid}/antiCheat/screenshotAttempts`]: attempt,
+    [`userResults/${uid}/antiCheat/lastSource`]: source,
+    [`userResults/${uid}/antiCheat/lastDetectedAt`]: Date.now()
+  };
+
+  if (attempt >= 3 && !state.antiCheat.leaderboardAlertSent) {
+    updates[`userResults/${uid}/antiCheat/leaderboardAlert`] = true;
+    updates[`userResults/${uid}/antiCheat/leaderboardAlertAt`] = Date.now();
+    state.antiCheat.leaderboardAlertSent = true;
+  }
+
+  try {
+    await update(ref(state.database), updates);
+  } catch (error) {
+    console.warn("Could not save anti-cheat event:", error);
+  }
+}
+
+function showAntiCheatOverlay() {
+  const overlay = $("#antiCheatOverlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+  overlay.classList.add("show");
+}
+
+function hideAntiCheatOverlay() {
+  const overlay = $("#antiCheatOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("show");
+  overlay.hidden = true;
+}
+
 function enterGuestMode() {
   state.currentUser = null;
   state.guestMode = true;
+  state.antiCheat.screenshotAttempts = 0;
+  state.antiCheat.leaderboardAlertSent = false;
   $("#authScreen").hidden = true;
   $("#appShell").hidden = false;
   $("#userInitials").textContent = "G";
@@ -627,6 +718,7 @@ function showView(name) {
     startSectionTimer(name);
   } else {
     stopSectionTimer();
+    hideAntiCheatOverlay();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
