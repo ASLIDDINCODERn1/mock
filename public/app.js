@@ -49,6 +49,7 @@ const state = {
     lastVisibilityFlagAt: 0,
     lastExitFlagAt: 0,
     exitAttempts: 0,
+    lastAlertAt: 0,
     leaderboardAlertSent: false,
     blackoutTimer: null
   },
@@ -178,14 +179,7 @@ function bindExamActions() {
   $("#clearWritingButton").addEventListener("click", clearWriting);
   $("#submitWritingButton").addEventListener("click", submitWriting);
   $("#resetSpeakingButton").addEventListener("click", resetSpeaking);
-  $("#recordButton").addEventListener("click", toggleRecordingUi);
   $("#submitSpeakingButton").addEventListener("click", submitSpeaking);
-  $("#speakingTranscript").addEventListener("input", () => {
-    if ($("#speakingTranscript").value.trim()) {
-      $("#speakingStatus").textContent = "Transcript ready for AI evaluation.";
-    }
-  });
-  initSpeechRecognition();
 }
 
 function bindAntiCheat() {
@@ -217,6 +211,7 @@ function bindAntiCheat() {
     event.preventDefault();
     if (source) {
       void saveAntiCheatEvent(source, state.antiCheat.screenshotAttempts);
+      showCheatingAlert("Blocked action detected. This behavior is reported.");
     }
   };
 
@@ -239,16 +234,19 @@ function bindAntiCheat() {
     activateBlackout(2500);
     void registerScreenshotAttempt("visibility_hidden");
     void registerExitAttempt("tab_switch");
+    showCheatingAlert("You left the exam screen. Cheating alert sent to admin.");
   });
 
   window.addEventListener("blur", () => {
     if (!isExamViewActive()) return;
     activateBlackout(1800);
+    showCheatingAlert("Focus changed from exam screen. This is flagged.");
   });
 
   window.addEventListener("pagehide", () => {
     if (!isExamViewActive()) return;
     void registerExitAttempt("pagehide");
+    showCheatingAlert("Exam page was hidden. Cheating alert sent.");
   });
 
   window.addEventListener("beforeunload", () => {
@@ -262,6 +260,23 @@ function bindAntiCheat() {
       [`userResults/${uid}/antiCheat/leaderboardAlertAt`]: now
     };
     update(ref(state.database), updates).catch(() => {});
+  });
+
+  document.addEventListener("touchstart", (event) => {
+    if (!isExamViewActive()) return;
+    if (event.touches.length >= 3) {
+      activateBlackout(2200);
+      void registerScreenshotAttempt("multi_touch_gesture");
+      showCheatingAlert("Suspicious touch gesture detected. Alert sent.");
+    }
+  }, { passive: true });
+
+  document.addEventListener("selectionchange", () => {
+    if (!isExamViewActive()) return;
+    const selected = String(window.getSelection?.() || "").trim();
+    if (selected.length > 18) {
+      void saveAntiCheatEvent("selection_detected", state.antiCheat.screenshotAttempts);
+    }
   });
 }
 
@@ -519,6 +534,7 @@ async function registerScreenshotAttempt(source) {
 
   activateBlackout(1800);
   toast(`Screenshot attempt detected (${attempt}/3).`, "error");
+  showCheatingAlert(`Screenshot/capture attempt detected (${attempt}/3).`);
   await saveAntiCheatEvent(source, attempt);
 }
 
@@ -582,6 +598,15 @@ function activateBlackout(durationMs = 1500) {
       overlay.hidden = true;
     }
   }, durationMs);
+}
+
+function showCheatingAlert(message) {
+  const now = Date.now();
+  if (now - state.antiCheat.lastAlertAt < 2000) return;
+  state.antiCheat.lastAlertAt = now;
+  toast(message, "error");
+  // Explicit popup requested by admin for mobile users.
+  window.alert(message);
 }
 
 function showAntiCheatOverlay() {
@@ -1119,14 +1144,8 @@ function renderSpeaking() {
   $("#speakingPoints").innerHTML = state.speaking.points
     .map((point) => `<div class="point-item">${escapeHtml(point)}</div>`)
     .join("");
-  $("#recordButton").disabled = !hasSpeakingContent();
   $("#resetSpeakingButton").disabled = !hasSpeakingContent();
   $("#submitSpeakingButton").disabled = !hasSpeakingContent();
-  $("#speakingStatus").textContent = state.speechRecognition
-    ? (hasSpeakingContent()
-      ? "Press record and speak, or type your answer below."
-      : "Speaking bo'limi admin tomonidan to'ldirilmaguncha bo'sh turadi.")
-    : "Speech recognition is not supported in this browser. You can still type your answer below.";
 }
 
 function initSpeechRecognition() {
@@ -1231,15 +1250,8 @@ function updateRecordingTime() {
 
 function resetSpeaking() {
   if (!hasSpeakingContent()) return;
-  stopRecordingUi();
-  state.speakingTranscriptFinal = "";
-  state.recordStartedAt = null;
   $("#speakingTranscript").value = "";
   $("#speakingResult").hidden = true;
-  $("#speakingStatus").textContent = state.speechRecognition
-    ? "Press record and speak, or type your answer below."
-    : "Speech recognition is not supported in this browser. You can still type your answer below.";
-  $("#recordingTime").textContent = "0:00";
 }
 
 async function submitSpeaking() {
@@ -1247,10 +1259,6 @@ async function submitSpeaking() {
     toast("Speaking mavzusi hali admin tomonidan kiritilmagan.", "error");
     return;
   }
-  if (state.recording) {
-    stopRecordingUi();
-  }
-
   const transcript = $("#speakingTranscript").value.trim();
   if (wordCount(transcript) < 20) {
     toast("Speak or type at least 20 words before evaluation.", "error");
@@ -1267,9 +1275,7 @@ async function submitSpeaking() {
       throw new Error(aiStatus.message || "Speaking AI is not configured.");
     }
 
-    const duration = state.recordStartedAt
-      ? Math.max(1, Math.floor((Date.now() - state.recordStartedAt) / 1000))
-      : wordCount(transcript);
+    const duration = wordCount(transcript);
     const result = await apiPost("/api/speaking-evaluate", {
       transcript,
       prompt: state.speaking.prompt,
