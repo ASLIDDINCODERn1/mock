@@ -124,54 +124,10 @@
       </header>
 
       <section id="dashboardView" class="view active">
-        <div class="dashboard-grid">
-          <article class="summary-panel">
-            <span class="eyebrow">Today</span>
-            <h3>Choose a section and start the exam flow for your program.</h3>
-            <div class="summary-stats">
-              <div>
-                <strong>4</strong>
-                <span>Sections</span>
-              </div>
-              <div>
-                <strong>1</strong>
-                <span>Ready test</span>
-              </div>
-              <div>
-                <strong>AI</strong>
-                <span>Writing + speaking</span>
-              </div>
-            </div>
-          </article>
-
-          <article class="status-panel">
-            <span class="eyebrow">Exam status</span>
-            <div id="scoreList"></div>
-          </article>
-        </div>
-
-        <div class="section-cards">
-          <button class="section-card" data-view="grammar">
-            <span class="section-code">G</span>
-            <strong>Grammar</strong>
-            <small>Multiple choice and correction test</small>
-          </button>
-          <button class="section-card" data-view="reading">
-            <span class="section-code">R</span>
-            <strong>Reading</strong>
-            <small>Prepared passage with answer key</small>
-          </button>
-          <button class="section-card" data-view="writing">
-            <span class="section-code">W</span>
-            <strong>Writing</strong>
-            <small>Admin topic with AI evaluation</small>
-          </button>
-          <button class="section-card" data-view="speaking">
-            <span class="section-code">S</span>
-            <strong>Speaking</strong>
-            <small>Admin prompt, mic capture, AI evaluation</small>
-          </button>
-        </div>
+        <article class="status-panel dashboard-scores-only">
+          <span class="eyebrow">Exam scores</span>
+          <div id="scoreList"></div>
+        </article>
       </section>
 
       <section id="grammarView" class="view">

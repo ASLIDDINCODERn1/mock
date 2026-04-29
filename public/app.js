@@ -932,7 +932,7 @@ function renderDashboardStatus() {
           <button class="score-row" data-view="${s.key}">
             <span class="section-dot-sm ${started ? "done" : "idle"}">${s.icon}</span>
             <span class="score-label">${s.label}</span>
-            <span class="score-val ${started ? "scored" : "pending"}">${started ? score + "%" : "Not started"}</span>
+            <span class="score-val ${started ? "scored" : "pending"}">${started ? score + "%" : "--"}</span>
             <svg class="score-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
           </button>`;
       }).join("")}

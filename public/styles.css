@@ -659,6 +659,10 @@ html[data-theme="dark"] .profile-button span {
   padding: 22px;
 }
 
+.dashboard-scores-only {
+  max-width: 760px;
+}
+
 .summary-panel {
   background: var(--panel-strong);
   color: #ffffff;
