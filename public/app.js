@@ -353,9 +353,23 @@ async function enterApp(user) {
   $("#drawerInitials").textContent = initials(user.email || "User");
   $("#drawerEmail").textContent = user.email || "Firebase user";
   $("#sessionStatus").textContent = "Active on this device only";
+  await saveUserProfileForLeaderboard();
   await loadAdminConfig();
   await loadRemoteScores();
   showView("dashboard");
+}
+
+async function saveUserProfileForLeaderboard() {
+  if (!state.database || !state.currentUser) return;
+  const uid = state.currentUser.uid;
+  try {
+    await update(ref(state.database), {
+      [`userResults/${uid}/email`]: state.currentUser.email || "",
+      [`userResults/${uid}/lastActive`]: Date.now()
+    });
+  } catch (error) {
+    console.warn("Could not save user profile for leaderboard:", error);
+  }
 }
 
 async function loadAdminConfig() {
