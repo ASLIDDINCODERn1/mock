@@ -354,6 +354,7 @@ async function enterApp(user) {
   $("#drawerEmail").textContent = user.email || "Firebase user";
   $("#sessionStatus").textContent = "Active on this device only";
   await loadAdminConfig();
+  await loadRemoteScores();
   showView("dashboard");
 }
 
@@ -858,6 +859,33 @@ function saveScore(section, score) {
   state.scores[section] = score;
   try { localStorage.setItem("mock-exam-scores", JSON.stringify(state.scores)); } catch {}
   renderDashboardStatus();
+}
+
+async function loadRemoteScores() {
+  if (!state.database || !state.currentUser) {
+    renderDashboardStatus();
+    return;
+  }
+
+  try {
+    const snap = await get(ref(state.database, `userResults/${state.currentUser.uid}/scores`));
+    const savedScores = snap.val() || {};
+    const sections = ["grammar", "reading", "writing", "speaking"];
+
+    for (const section of sections) {
+      const raw = savedScores[section];
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        state.scores[section] = Math.max(0, Math.min(100, Math.round(parsed)));
+      }
+    }
+
+    try { localStorage.setItem("mock-exam-scores", JSON.stringify(state.scores)); } catch {}
+  } catch (error) {
+    console.warn("Could not load saved dashboard scores:", error);
+  } finally {
+    renderDashboardStatus();
+  }
 }
 
 function renderDashboardStatus() {
