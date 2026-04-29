@@ -1,8 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
 import { getAnalytics, isSupported as isAnalyticsSupported } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
 import {
+  browserLocalPersistence,
   getAuth,
   onAuthStateChanged,
+  setPersistence,
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
@@ -299,6 +301,7 @@ async function setupFirebaseAuth() {
       .catch(() => {});
 
     state.auth = getAuth(app);
+    await setPersistence(state.auth, browserLocalPersistence);
     state.database = firebaseConfig.databaseURL ? getDatabase(app) : null;
 
     onAuthStateChanged(state.auth, async (user) => {
