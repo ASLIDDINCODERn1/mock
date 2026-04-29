@@ -607,6 +607,20 @@ html[data-theme="dark"] .profile-button span {
   display: block;
 }
 
+#grammarView.active,
+#readingView.active,
+#writingView.active,
+#speakingView.active {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#writingView.active textarea,
+#speakingView.active textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 .dashboard-grid,
 .split-layout {
   display: grid;
@@ -1391,6 +1405,11 @@ html[data-theme="dark"] .switch-thumb {
   padding: 24px;
   background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(10px);
+}
+
+.anti-cheat-overlay.blackout {
+  background: #000000;
+  backdrop-filter: none;
 }
 
 .anti-cheat-card {

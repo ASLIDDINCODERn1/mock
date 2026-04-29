@@ -47,7 +47,10 @@ const state = {
   antiCheat: {
     screenshotAttempts: 0,
     lastVisibilityFlagAt: 0,
-    leaderboardAlertSent: false
+    lastExitFlagAt: 0,
+    exitAttempts: 0,
+    leaderboardAlertSent: false,
+    blackoutTimer: null
   },
   speechRecognition: null,
   speakingTranscriptFinal: "",
@@ -187,10 +190,40 @@ function bindExamActions() {
 
 function bindAntiCheat() {
   document.addEventListener("keydown", (event) => {
+    if (!isExamViewActive()) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    const blockedCombo =
+      (event.ctrlKey || event.metaKey) &&
+      ["c", "x", "v", "a", "p", "s", "u"].includes(key);
+    const blockedFunctionKey = event.key === "PrintScreen" || event.key === "F12";
+
+    if (blockedCombo || blockedFunctionKey) {
+      event.preventDefault();
+      if (blockedFunctionKey) {
+        activateBlackout(2000);
+      }
+    }
+
     if (event.key === "PrintScreen") {
       void registerScreenshotAttempt("printscreen");
     }
   });
+
+  const blockActionInExam = (event, source) => {
+    if (!isExamViewActive()) return;
+    event.preventDefault();
+    if (source) {
+      void saveAntiCheatEvent(source, state.antiCheat.screenshotAttempts);
+    }
+  };
+
+  document.addEventListener("copy", (event) => blockActionInExam(event, "copy_blocked"));
+  document.addEventListener("cut", (event) => blockActionInExam(event, "cut_blocked"));
+  document.addEventListener("paste", (event) => blockActionInExam(event, "paste_blocked"));
+  document.addEventListener("contextmenu", (event) => blockActionInExam(event, "contextmenu_blocked"));
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden || !isExamViewActive()) {
@@ -203,7 +236,32 @@ function bindAntiCheat() {
     }
 
     state.antiCheat.lastVisibilityFlagAt = now;
+    activateBlackout(2500);
     void registerScreenshotAttempt("visibility_hidden");
+    void registerExitAttempt("tab_switch");
+  });
+
+  window.addEventListener("blur", () => {
+    if (!isExamViewActive()) return;
+    activateBlackout(1800);
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (!isExamViewActive()) return;
+    void registerExitAttempt("pagehide");
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (!isExamViewActive() || !state.database || !state.currentUser) return;
+    const uid = state.currentUser.uid;
+    const now = Date.now();
+    const updates = {
+      [`userResults/${uid}/antiCheat/lastExitSource`]: "beforeunload",
+      [`userResults/${uid}/antiCheat/lastExitAt`]: now,
+      [`userResults/${uid}/antiCheat/leaderboardAlert`]: true,
+      [`userResults/${uid}/antiCheat/leaderboardAlertAt`]: now
+    };
+    update(ref(state.database), updates).catch(() => {});
   });
 }
 
@@ -459,23 +517,49 @@ async function registerScreenshotAttempt(source) {
     showAntiCheatOverlay();
   }
 
+  activateBlackout(1800);
   toast(`Screenshot attempt detected (${attempt}/3).`, "error");
   await saveAntiCheatEvent(source, attempt);
 }
 
-async function saveAntiCheatEvent(source, attempt) {
+async function registerExitAttempt(source) {
+  if (!isExamViewActive()) return;
+  const now = Date.now();
+  if (now - state.antiCheat.lastExitFlagAt < 3000) return;
+  state.antiCheat.lastExitFlagAt = now;
+  state.antiCheat.exitAttempts += 1;
+  await saveAntiCheatEvent(source, state.antiCheat.screenshotAttempts, {
+    exitAttempts: state.antiCheat.exitAttempts,
+    leaderboardAlert: true
+  });
+}
+
+async function saveAntiCheatEvent(source, attempt, extras = {}) {
   if (!state.database || !state.currentUser) return;
 
   const uid = state.currentUser.uid;
+  const now = Date.now();
   const updates = {
     [`userResults/${uid}/antiCheat/screenshotAttempts`]: attempt,
     [`userResults/${uid}/antiCheat/lastSource`]: source,
-    [`userResults/${uid}/antiCheat/lastDetectedAt`]: Date.now()
+    [`userResults/${uid}/antiCheat/lastDetectedAt`]: now
   };
 
   if (attempt >= 3 && !state.antiCheat.leaderboardAlertSent) {
     updates[`userResults/${uid}/antiCheat/leaderboardAlert`] = true;
-    updates[`userResults/${uid}/antiCheat/leaderboardAlertAt`] = Date.now();
+    updates[`userResults/${uid}/antiCheat/leaderboardAlertAt`] = now;
+    state.antiCheat.leaderboardAlertSent = true;
+  }
+
+  if (extras.exitAttempts) {
+    updates[`userResults/${uid}/antiCheat/exitAttempts`] = extras.exitAttempts;
+    updates[`userResults/${uid}/antiCheat/lastExitSource`] = source;
+    updates[`userResults/${uid}/antiCheat/lastExitAt`] = now;
+  }
+
+  if (extras.leaderboardAlert) {
+    updates[`userResults/${uid}/antiCheat/leaderboardAlert`] = true;
+    updates[`userResults/${uid}/antiCheat/leaderboardAlertAt`] = now;
     state.antiCheat.leaderboardAlertSent = true;
   }
 
@@ -484,6 +568,20 @@ async function saveAntiCheatEvent(source, attempt) {
   } catch (error) {
     console.warn("Could not save anti-cheat event:", error);
   }
+}
+
+function activateBlackout(durationMs = 1500) {
+  const overlay = $("#antiCheatOverlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+  overlay.classList.add("show", "blackout");
+  clearTimeout(state.antiCheat.blackoutTimer);
+  state.antiCheat.blackoutTimer = setTimeout(() => {
+    overlay.classList.remove("blackout");
+    if (!overlay.classList.contains("show")) {
+      overlay.hidden = true;
+    }
+  }, durationMs);
 }
 
 function showAntiCheatOverlay() {
@@ -1192,19 +1290,9 @@ function renderSpeakingResult(data) {
 
   $("#speakingResult").hidden = false;
   $("#speakingResult").innerHTML = `
-    <span class="eyebrow">AI feedback</span>
-    <h3>${data.overallScore}% overall ${data.band ? `- ${escapeHtml(data.band)}` : ""}</h3>
-    <p>${escapeHtml(data.summary || "")}</p>
-    <div class="result-grid">
-      ${metricCard("Fluency", data.fluency?.score ?? 0, data.fluency?.feedback ?? "")}
-      ${metricCard("Grammar", data.grammar?.score ?? 0, data.grammar?.feedback ?? "")}
-      ${metricCard("Vocabulary", data.vocabulary?.score ?? 0, data.vocabulary?.feedback ?? "")}
-      ${metricCard("Task", data.taskResponse?.score ?? 0, data.taskResponse?.feedback ?? "")}
-    </div>
-    <ul class="feedback-list">
-      ${(data.strengths || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-      ${(data.improvements || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-    </ul>
+    <span class="eyebrow">Speaking result</span>
+    <h3>${data.overallScore}% ${data.band ? `- ${escapeHtml(data.band)}` : ""}</h3>
+    <p>Your speaking section has been rated. Detailed rubric is hidden in student mode.</p>
   `;
   $("#speakingResult").scrollIntoView({ behavior: "smooth", block: "start" });
 }
