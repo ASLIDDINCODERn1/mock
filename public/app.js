@@ -960,6 +960,39 @@ function hasGrammarContent() {
   return Array.isArray(state.grammar) && state.grammar.length > 0;
 }
 
+function grammarQuestionHasOptions(item) {
+  return Array.isArray(item?.options) && item.options.length > 0;
+}
+
+function getGrammarAcceptedAnswers(item) {
+  if (!item) return [];
+  if (Array.isArray(item.acceptedAnswers)) {
+    return item.acceptedAnswers.map((value) => String(value || "").trim()).filter(Boolean);
+  }
+  if (Array.isArray(item.answers)) {
+    return item.answers.map((value) => String(value || "").trim()).filter(Boolean);
+  }
+  if (item.answer !== undefined && item.answer !== null) {
+    return [String(item.answer).trim()];
+  }
+  return [];
+}
+
+function normalizeGrammarAnswer(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[.,!?;:()[\]{}"']/g, "");
+}
+
+function isGrammarAnswerCorrect(item, userAnswer) {
+  const accepted = getGrammarAcceptedAnswers(item).map(normalizeGrammarAnswer);
+  if (!accepted.length) return false;
+  const normalizedUser = normalizeGrammarAnswer(userAnswer);
+  return accepted.includes(normalizedUser);
+}
+
 function hasReadingContent() {
   return Boolean(state.reading.passage.trim()) && Array.isArray(state.reading.questions) && state.reading.questions.length > 0;
 }
@@ -988,11 +1021,24 @@ function renderGrammar() {
   resetButton.disabled = false;
   const letters = ["A", "B", "C", "D"];
   $("#grammarQuestions").innerHTML = state.grammar.map((item, index) => {
-    const options = item.options.map((option, oi) => `
-      <button class="opt-btn" type="button" data-group="g${index}" data-value="${escapeAttr(option)}">
-        <span class="opt-letter">${letters[oi] || oi + 1}</span>
-        <span class="opt-text">${escapeHtml(option)}</span>
-      </button>`).join("");
+    const options = grammarQuestionHasOptions(item)
+      ? item.options.map((option, oi) => `
+          <button class="opt-btn" type="button" data-group="g${index}" data-value="${escapeAttr(option)}">
+            <span class="opt-letter">${letters[oi] || oi + 1}</span>
+            <span class="opt-text">${escapeHtml(option)}</span>
+          </button>`).join("")
+      : `
+          <div class="grammar-input-wrap">
+            <label for="grammarInput${index}" class="grammar-input-label">Your answer</label>
+            <input
+              id="grammarInput${index}"
+              class="grammar-input"
+              type="text"
+              placeholder="Type your answer"
+              autocomplete="off"
+            />
+          </div>
+        `;
     return `
       <article class="question-card">
         <div class="q-number">Q${index + 1}</div>
@@ -1011,10 +1057,14 @@ function submitGrammar() {
   }
   stopSectionTimer();
   const answers = state.grammar.map((_, i) => {
-    const sel = $(`.opt-btn.selected[data-group="g${i}"]`);
-    return sel ? sel.dataset.value : "";
+    const item = state.grammar[i];
+    if (grammarQuestionHasOptions(item)) {
+      const sel = $(`.opt-btn.selected[data-group="g${i}"]`);
+      return sel ? sel.dataset.value : "";
+    }
+    return $(`#grammarInput${i}`)?.value?.trim() || "";
   });
-  const correct = answers.filter((a, i) => a === state.grammar[i].answer).length;
+  const correct = answers.filter((a, i) => isGrammarAnswerCorrect(state.grammar[i], a)).length;
   const score = Math.round((correct / state.grammar.length) * 100);
   saveScore("grammar", score);
   saveUserResult("grammar", score, answers);
@@ -1025,8 +1075,10 @@ function submitGrammar() {
     <h3>${score}% — ${correct} of ${state.grammar.length} correct</h3>
     <div class="result-grid">
       ${state.grammar.map((item, i) => {
-        const ok = answers[i] === item.answer;
-        return metricCard(`Q${i + 1}`, ok ? "Correct ✓" : "Wrong ✗", ok ? item.explanation : `Correct: ${item.answer}`);
+        const ok = isGrammarAnswerCorrect(item, answers[i]);
+        const acceptedAnswers = getGrammarAcceptedAnswers(item);
+        const correctText = acceptedAnswers.length ? acceptedAnswers.join(" / ") : "Not set";
+        return metricCard(`Q${i + 1}`, ok ? "Correct ✓" : "Wrong ✗", ok ? (item.explanation || "Good job.") : `Correct: ${correctText}`);
       }).join("")}
     </div>`;
   $("#grammarResult").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1035,6 +1087,7 @@ function submitGrammar() {
 function resetGrammar() {
   if (!hasGrammarContent()) return;
   $$(".opt-btn[data-group^='g']").forEach(b => b.classList.remove("selected"));
+  $$("input.grammar-input").forEach((input) => { input.value = ""; });
   $("#grammarResult").hidden = true;
   startSectionTimer("grammar");
 }

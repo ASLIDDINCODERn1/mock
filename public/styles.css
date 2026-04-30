@@ -1046,6 +1046,23 @@ html[data-theme="dark"] .switch-thumb {
   gap: 8px;
 }
 
+.grammar-input-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.grammar-input-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.grammar-input {
+  width: 100%;
+}
+
 .opt-btn {
   display: flex;
   align-items: center;
